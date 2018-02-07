@@ -16,6 +16,10 @@
 
 package eu.elixir.ega.ebi.egacipher;
 
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -25,13 +29,8 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
- *
  * @author asenf
  */
 public final class Glue {
@@ -76,51 +75,43 @@ public final class Glue {
 
         // Convert 4 bytes into a 32-bit integer value.
         int seed = (randomBytes[0] & 0x7f) << 24 |
-                    randomBytes[1] << 16 |
-                    randomBytes[2] << 8 |
-                    randomBytes[3];
+                randomBytes[1] << 16 |
+                randomBytes[2] << 8 |
+                randomBytes[3];
 
         // Create a randomizer from the seed.
         Random random = new Random(seed);
 
         // Allocate appropriate memory for the password.
-        if (minLength < maxLength)
-        {
-            randomString = new char[random.nextInt(maxLength-minLength) + minLength];
-        }
-        else
-        {
+        if (minLength < maxLength) {
+            randomString = new char[random.nextInt(maxLength - minLength) + minLength];
+        } else {
             randomString = new char[minLength];
         }
 
         int requiredCharactersLeft = minLCaseCount + minUCaseCount + minNumCount + minSpecialCount;
 
         // Build the password.
-        for (int i = 0; i < randomString.length; i++)
-        {
+        for (int i = 0; i < randomString.length; i++) {
             String selectableChars = "";
 
             // if we still have plenty of characters left to achieve our minimum requirements.
-            if (requiredCharactersLeft < randomString.length - i)
-            {
+            if (requiredCharactersLeft < randomString.length - i) {
                 // choose from any group at random
                 selectableChars = LCaseChars + UCaseChars + NumericChars + SpecialChars;
-            }
-            else // we are out of wiggle room, choose from a random group that still needs to have a minimum required.
+            } else // we are out of wiggle room, choose from a random group that still needs to have a minimum required.
             {
                 // choose only from a group that we need to satisfy a minimum for.
-                for (Iterator<String> charGroup = charGroupsUsed.keySet().iterator(); charGroup.hasNext(); )
-                {
+                for (Iterator<String> charGroup = charGroupsUsed.keySet().iterator(); charGroup.hasNext(); ) {
                     String cg = charGroup.next();
-                    if (Integer.parseInt(charGroupsUsed.get(cg).toString()) > 0)
-                    {
-                        if  (cg.equalsIgnoreCase("lcase")) {
+                    if (Integer.parseInt(charGroupsUsed.get(cg).toString()) > 0) {
+                        if (cg.equalsIgnoreCase("lcase")) {
                             selectableChars += LCaseChars;
-                        } else if  (cg.equalsIgnoreCase("ucase")) {
+                        } else if (cg.equalsIgnoreCase("ucase")) {
                             selectableChars += UCaseChars;
-                        } else if  (cg.equalsIgnoreCase("num")) {
+                        } else if (cg.equalsIgnoreCase("num")) {
                             selectableChars += NumericChars;
-                        } else if  (cg.equalsIgnoreCase("special")) {
+                        } else if (cg.equalsIgnoreCase("special")) {
                             selectableChars += SpecialChars;
                         }
                     }
@@ -135,43 +126,32 @@ public final class Glue {
             randomString[i] = nextChar.charAt(0);
 
             // Now figure out where it came from, and decrement the appropriate minimum value.
-            if (LCaseChars.contains(nextChar))
-            {
-                int count = Integer.parseInt( charGroupsUsed.get("lcase").toString()  ) - 1;
+            if (LCaseChars.contains(nextChar)) {
+                int count = Integer.parseInt(charGroupsUsed.get("lcase").toString()) - 1;
                 charGroupsUsed.remove("lcase");
                 charGroupsUsed.put("lcase", count);
-                if (count >= 0)
-                {
+                if (count >= 0) {
                     requiredCharactersLeft--;
                 }
-            }
-            else if (UCaseChars.contains(nextChar))
-            {
-                int count = Integer.parseInt( charGroupsUsed.get("ucase").toString()  ) - 1;
+            } else if (UCaseChars.contains(nextChar)) {
+                int count = Integer.parseInt(charGroupsUsed.get("ucase").toString()) - 1;
                 charGroupsUsed.remove("ucase");
                 charGroupsUsed.put("ucase", count);
-                if (count >= 0)
-                {
+                if (count >= 0) {
                     requiredCharactersLeft--;
                 }
-            }
-            else if (NumericChars.contains(nextChar))
-            {
-                int count = Integer.parseInt( charGroupsUsed.get("num").toString()  ) - 1;
+            } else if (NumericChars.contains(nextChar)) {
+                int count = Integer.parseInt(charGroupsUsed.get("num").toString()) - 1;
                 charGroupsUsed.remove("num");
                 charGroupsUsed.put("num", count);
-                if (count >= 0)
-                {
+                if (count >= 0) {
                     requiredCharactersLeft--;
                 }
-            }
-            else if (SpecialChars.contains(nextChar))
-            {
-                int count = Integer.parseInt( charGroupsUsed.get("special").toString()  ) - 1;
+            } else if (SpecialChars.contains(nextChar)) {
+                int count = Integer.parseInt(charGroupsUsed.get("special").toString()) - 1;
                 charGroupsUsed.remove("special");
                 charGroupsUsed.put("special", count);
-                if (count >= 0)
-                {
+                if (count >= 0) {
                     requiredCharactersLeft--;
                 }
             }
@@ -181,14 +161,14 @@ public final class Glue {
 
     public static synchronized String toString(byte[] input) {
         String result = "";
-        for (int i=0; i<input.length; i++)
-            result += (char)input[i];
+        for (int i = 0; i < input.length; i++)
+            result += (char) input[i];
         return result;
     }
 
     public SecretKey getKey(char[] password, int pw_strength) {
         // Key Generation
-        byte[] salt = {(byte)-12, (byte)34, (byte)1, (byte)0, (byte)-98, (byte)223, (byte)78, (byte)21};                
+        byte[] salt = {(byte) -12, (byte) 34, (byte) 1, (byte) 0, (byte) -98, (byte) 223, (byte) 78, (byte) 21};
         SecretKeyFactory factory = null;
         SecretKey secret = null;
         try {
@@ -201,12 +181,10 @@ public final class Glue {
         }
         return secret;
     }
-    
-    
-    public static synchronized Glue getInstance()
-    {
-        if(instance == null)
-        {
+
+
+    public static synchronized Glue getInstance() {
+        if (instance == null) {
             instance = new Glue();
         }
         return instance;

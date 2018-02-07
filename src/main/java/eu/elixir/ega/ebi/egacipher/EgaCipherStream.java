@@ -21,6 +21,8 @@
 
 package eu.elixir.ega.ebi.egacipher;
 
+import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
 import java.io.*;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -29,11 +31,8 @@ import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.crypto.*;
-import javax.crypto.spec.IvParameterSpec;
 
 /**
- *
  * @author asenf
  */
 public class EgaCipherStream extends Thread {
@@ -43,15 +42,16 @@ public class EgaCipherStream extends Thread {
     private BufferedOutputStream outstream; // Write raw data
     private int blocksize, pw_strength;
     private boolean mod;                    // true = encrypt, false = decrypt
-    
+
     public EgaCipherStream(InputStream in, OutputStream out, int blocksize, char[] password, boolean mod) {
         this(in, out, blocksize, password, mod, 128); // Default password strength = 128
     }
+
     public EgaCipherStream(InputStream in, OutputStream out, int blocksize, char[] password, boolean mod, int pw_strength) {
         this.blocksize = blocksize;
         this.mod = mod;
         this.pw_strength = pw_strength;
-        
+
         try {
             // File Stream Setup
             if (mod) { // encrypt -- cipher in stream (need to write iv in plain text)
@@ -59,7 +59,7 @@ public class EgaCipherStream extends Thread {
             } else { // decrypt -- cipher out stream (need to read iv in plain text)
                 this.instream = new BufferedInputStream(in);
             }
-            
+
             // Key Generation
             SecretKey secret = Glue.getInstance().getKey(password, this.pw_strength);
 
@@ -108,7 +108,7 @@ public class EgaCipherStream extends Thread {
 
     // Read cipher file, write raw --> encryption
     private void encrypt() {
-        try {            
+        try {
             byte[] block = new byte[this.blocksize * 16];
             int numchars = this.incipher.read(block);
             while (numchars != -1) {
@@ -124,6 +124,7 @@ public class EgaCipherStream extends Thread {
             Logger.getLogger(EgaCipherStream.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     // Read raw, write cipher file --> decryption
     private void decrypt() {
         try {
@@ -145,19 +146,19 @@ public class EgaCipherStream extends Thread {
 
     // Used on the last block ... overwrite data at end with -1
     private static byte[] new_fill(byte[] in, int numchars) {
-        int nb = 16 * (numchars/16) + 16;
+        int nb = 16 * (numchars / 16) + 16;
         byte[] result = new byte[nb];
         System.arraycopy(in, 0, result, 0, numchars);
-        for (int i=numchars; i<nb; i++) {
+        for (int i = numchars; i < nb; i++) {
             result[i] = -1;
         }
         return result;
     }
-    
+
     // Get a cipher object, based on provided initialization objects - iv returned through parameters
-    public static Cipher getCipher(char[] password, boolean mod, int pw_strength, byte[] iv) {        
+    public static Cipher getCipher(char[] password, boolean mod, int pw_strength, byte[] iv) {
         Cipher cipher = null;
-        
+
         try {
             // Key Generation
             SecretKey secret = Glue.getInstance().getKey(password, pw_strength);
@@ -184,7 +185,7 @@ public class EgaCipherStream extends Thread {
         } catch (InvalidAlgorithmParameterException | InvalidKeyException | NoSuchPaddingException | NoSuchAlgorithmException ex) {
             Logger.getLogger(EgaCipherStream.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         return cipher;
     }
 }

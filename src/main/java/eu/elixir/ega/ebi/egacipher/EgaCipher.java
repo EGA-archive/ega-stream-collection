@@ -24,19 +24,16 @@
 package eu.elixir.ega.ebi.egacipher;
 
 import com.google.common.io.ByteStreams;
-import htsjdk.samtools.BAMIndexer;
-import htsjdk.samtools.DefaultSAMRecordFactory;
-//import htsjdk.samtools.SAMFileReader;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.SamInputResource;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.SamReaderFactory.Option;
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.SeekableFileStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import java.io.*;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -45,13 +42,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.crypto.Cipher;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
+
+//import htsjdk.samtools.SAMFileReader;
+
+//import htsjdk.samtools.SAMFileReader;
 
 /**
- *
  * @author asenf
  */
 public class EgaCipher {
@@ -63,8 +59,8 @@ public class EgaCipher {
     boolean mod, gpg;
 
     public EgaCipher(int numThreads, int block, boolean mod, boolean gpg, int pw_strength, String[] in_out_pair) throws FileNotFoundException {
-        this.numThreads = (numThreads > 0)?numThreads:Runtime.getRuntime().availableProcessors();
-        this.blocksize = (block > 0)?block:2048;
+        this.numThreads = (numThreads > 0) ? numThreads : Runtime.getRuntime().availableProcessors();
+        this.blocksize = (block > 0) ? block : 2048;
         this.mod = mod;
         this.gpg = gpg;
         this.pw_strength = pw_strength;
@@ -77,9 +73,9 @@ public class EgaCipher {
             int numFiles = in_out_pair.length / 2;
             this.in = new FileInputStream[numFiles];
             this.out = new FileOutputStream[numFiles];
-            for (int i=0; i<numFiles; i++) {
-                this.in[i] = new FileInputStream(in_out_pair[2*i]);
-                this.out[i] = new FileOutputStream(in_out_pair[2*i+1]);
+            for (int i = 0; i < numFiles; i++) {
+                this.in[i] = new FileInputStream(in_out_pair[2 * i]);
+                this.out[i] = new FileOutputStream(in_out_pair[2 * i + 1]);
             }
         }
     }
@@ -89,7 +85,7 @@ public class EgaCipher {
     public void run(char[] password) {
         if (!this.gpg) {
             EgaCipherStream my_threads[] = new EgaCipherStream[this.numThreads];
-            int count = 0, savecount = 0, size = (this.in == null)?-1:this.in.length;
+            int count = 0, savecount = 0, size = (this.in == null) ? -1 : this.in.length;
 
             if (this.in != null) { // Input file(s) provided to read from
                 boolean multi = false;
@@ -101,8 +97,8 @@ public class EgaCipher {
                 do {
                     ArrayList indices = new ArrayList(); // idices of "free" threads
                     alive = false;
-                    for (int i=0; i<numThreads; i++) { // find threads that have ended
-                        if ( (my_threads[i] != null) && (my_threads[i].isAlive()) ) {
+                    for (int i = 0; i < numThreads; i++) { // find threads that have ended
+                        if ((my_threads[i] != null) && (my_threads[i].isAlive())) {
                             alive = true;
                         } else {
                             indices.add(i);
@@ -115,7 +111,7 @@ public class EgaCipher {
 
                     // Previous loop determined free threads; fill them in the next loop
                     if (indices.size() > 0 && count < size) { // If there are open threads, then
-                        for (int i=0; i<indices.size(); i++) { // Fill all open spaces
+                        for (int i = 0; i < indices.size(); i++) { // Fill all open spaces
                             if (count < size) { // Catch errors
                                 int index = Integer.parseInt(indices.get(i).toString());
                                 my_threads[index] = new EgaCipherStream(this.in[count], this.out[count], this.blocksize, password, this.mod, this.pw_strength);
@@ -126,12 +122,12 @@ public class EgaCipher {
                     }
 
                     // runs until the number of completed threads equals the number of files, and all threads completed (redundant)
-                }  while ((savecount < size) || alive);
+                } while ((savecount < size) || alive);
             } else { // Read from Stdin
                 EgaCipherStream cipher_stream = new EgaCipherStream(System.in, this.out[0], this.blocksize, password, this.mod, this.pw_strength);
                 cipher_stream.start();
 
-                while(cipher_stream.isAlive()) {
+                while (cipher_stream.isAlive()) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException ex) {
@@ -141,7 +137,7 @@ public class EgaCipher {
             }
         } else {
             EgaGpgStream my_threads[] = new EgaGpgStream[this.numThreads];
-            int count = 0, savecount = 0, size = (this.in == null)?-1:this.in.length;
+            int count = 0, savecount = 0, size = (this.in == null) ? -1 : this.in.length;
 
             boolean multi = false;
             if (this.in.length > 1) {
@@ -152,8 +148,8 @@ public class EgaCipher {
             do {
                 ArrayList indices = new ArrayList(); // idices of "free" threads
                 alive = false;
-                for (int i=0; i<numThreads; i++) { // find threads that have ended
-                    if ( (my_threads[i] != null) && (my_threads[i].isAlive()) ) {
+                for (int i = 0; i < numThreads; i++) { // find threads that have ended
+                    if ((my_threads[i] != null) && (my_threads[i].isAlive())) {
                         alive = true;
                     } else {
                         indices.add(i);
@@ -166,7 +162,7 @@ public class EgaCipher {
 
                 // Previous loop determined free threads; fill them in the next loop
                 if (indices.size() > 0 && count < size) { // If there are open threads, then
-                    for (int i=0; i<indices.size(); i++) { // Fill all open spaces
+                    for (int i = 0; i < indices.size(); i++) { // Fill all open spaces
                         if (count < size) { // Catch errors
                             int index = Integer.parseInt(indices.get(i).toString());
                             my_threads[index] = new EgaGpgStream(this.in[count], this.out[count], this.blocksize, password, this.mod, this.pw_strength);
@@ -177,13 +173,13 @@ public class EgaCipher {
                 }
 
                 // runs until the number of completed threads equals the number of files, and all threads completed (redundant)
-            }  while ((savecount < size) || alive);
+            } while ((savecount < size) || alive);
         }
     }
 
     /**
      * @param args the command line arguments
-     *      threads  mode  blocksize  password  in1 out1 in2 out2 in3 out3 ...
+     *             threads  mode  blocksize  password  in1 out1 in2 out2 in3 out3 ...
      */
     public static void main(String[] args) {
         if (args.length == 0) { // No parameters -- print usage instructions
@@ -213,12 +209,12 @@ public class EgaCipher {
             xtest(args[1].toCharArray(), args[2]); // 1 -- password, 2 -- filename
             System.exit(98);
         } else if (args[0].equalsIgnoreCase("--index")) {
-            String[] args_ = new String[args.length-1];
+            String[] args_ = new String[args.length - 1];
             System.arraycopy(args, 1, args_, 0, args_.length);
             index(args_);
             System.exit(0);
         }
-        
+
         // not a test case. Parse parameters -- mode (actually important)
         if (args[0].equalsIgnoreCase("-e")) {
             mod = true;
@@ -238,7 +234,7 @@ public class EgaCipher {
         if (args[1].equalsIgnoreCase("-f")) {
             offset = 1;
             passfile = args[2];
-            
+
             File pwf = new File(passfile);
             if (!pwf.exists()) {
                 System.out.println("File " + passfile + " can't be found!");
@@ -259,8 +255,8 @@ public class EgaCipher {
         // Files to be encrypted
         int numfiles = (args.length - 2 - offset);
         String[] files = new String[numfiles];
-        for (int i=0; i<numfiles; i++) {
-            files[i] = args[i+2+offset];
+        for (int i = 0; i < numfiles; i++) {
+            files[i] = args[i + 2 + offset];
         }
 
         EgaCipher t = null;
@@ -272,43 +268,43 @@ public class EgaCipher {
             System.out.println("Error opening/reading file");
         }
     }
-    
+
     private static void index(String[] args) {
         if (args.length < 2) {
             System.out.println("Required Parameters Errors");
             System.out.println("[File Password] [Input File]+");
             System.exit(1);
         }
-        
+
         // Test Code - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if (args[0].equals("--test")) {
-            test(Arrays.copyOfRange(args, 1, args.length), 128); 
+            test(Arrays.copyOfRange(args, 1, args.length), 128);
             System.exit(2);
         }
         if (args[0].equals("--plain")) {
-            plain(Arrays.copyOfRange(args, 1, args.length)); 
+            plain(Arrays.copyOfRange(args, 1, args.length));
             System.exit(2);
         }
-        
+
         // Process parameters --------------------------------------------------
         byte[] pw = args[0].getBytes();
-        
+
         int numFiles = args.length - 1;
         File[] inputfiles = new File[numFiles];
-        for (int i=0; i<numFiles; i++) {
-            inputfiles[i] = new File(args[(i+1)]);
+        for (int i = 0; i < numFiles; i++) {
+            inputfiles[i] = new File(args[(i + 1)]);
             if (!inputfiles[i].exists()) {
-                System.out.println("File " + args[(i+1)] + " does not exist!");
+                System.out.println("File " + args[(i + 1)] + " does not exist!");
                 System.exit(1);
             } else if (!inputfiles[i].getName().toLowerCase().endsWith(".bam.cip")) {
-                System.out.println("File " + args[(i+1)] + " is not an AES encrypted BAM file!");
+                System.out.println("File " + args[(i + 1)] + " is not an AES encrypted BAM file!");
                 System.exit(1);
             }
-                
+
         }
-        
+
         // Process files - generate BAM Index ----------------------------------
-        for (int i=0; i<inputfiles.length; i++) {
+        for (int i = 0; i < inputfiles.length; i++) {
             String md5 = generateIndex(inputfiles[i], pw, 128);
             if (md5 == null)
                 System.out.println("Index creation failed for " + inputfiles[i].getName());
@@ -318,14 +314,14 @@ public class EgaCipher {
 
         // Done! ---------------------------------------------------------------
     }
-    
+
     /*
      * Test class - encrypt a file using 256-bit encryption, then random-access
      * decrypt the file byte-by-byte, compare with original file
      */
     private static void test(char[] pass, String file) {
         // 1. Encrypt whole file
-        String[] files = {file, file + ".cip"};        
+        String[] files = {file, file + ".cip"};
         EgaCipher t = null;
         try {
             t = new EgaCipher(1, 2048, true, false, 256, files);
@@ -334,7 +330,7 @@ public class EgaCipher {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
             System.out.println("Error opening/reading file");
         }
-        
+
         // 2. Decrypt in Stages
         SeekableFileStream sft = null; // Original File
         EgaSeekableCipherStream sct = null; // Decrypted File
@@ -347,13 +343,13 @@ public class EgaCipher {
 
         // Length
         System.out.println(file + " length: " + sft.length());
-        System.out.println((file+".cip") + " length: " + sct.length());
-        
+        System.out.println((file + ".cip") + " length: " + sct.length());
+
         // Seek
         boolean success = true;
         byte[] test = new byte[1], cipher_test = new byte[1];
         long delta = sft.length() / 1000, pos = 0;
-        for (int i=0; i<1000; i++) {
+        for (int i = 0; i < 1000; i++) {
             try {
                 sft.seek(pos);
                 sft.read(test);
@@ -369,20 +365,20 @@ public class EgaCipher {
             }
             pos += delta;
         }
-        
+
         // Sequential Read
         try {
             sft.seek(0);
             sct.seek(0);
-            
+
             byte[] b_sft = new byte[10];
             byte[] b_sct = new byte[10];
-            
+
             int b_ = 0;
             while (b_ >= 0) {
                 b_ = sft.read(b_sft);
                 b_ = sct.read(b_sct);
-                
+
                 System.out.println(sft.position());
                 System.out.println(sct.position());
 
@@ -394,12 +390,12 @@ public class EgaCipher {
         } catch (IOException ex) {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         if (success)
             System.out.println("1000 Random Seeks & Sequential Read Successful");
         else
             System.out.println("Seek or Read Errors!");
-        
+
         // 3. Done
         try {
             sft.close();
@@ -408,6 +404,7 @@ public class EgaCipher {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     private static void xtest(char[] pass, String file) {
 
         // Try Limiting Stream *************************************************
@@ -420,23 +417,23 @@ public class EgaCipher {
         } catch (IOException ex) {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         InputStream limit = ByteStreams.limit(sft, 15);
 
         byte[] buffer = new byte[2048];
         try {
-            int read = limit.read(buffer);            
+            int read = limit.read(buffer);
             System.out.println(read);
-            read = limit.read(buffer);            
+            read = limit.read(buffer);
             System.out.println(read);
-        
+
             // -----------------------------------------------------------------
             FileInputStream fis = new FileInputStream(file);
             FileOutputStream fos = new FileOutputStream(file + ".xtest.cip");
-            
+
             // *****************************************************************
             // Encrypt file -- testing
-        
+
             SecretKey secret = Glue.getInstance().getKey(pass, 256);
             byte[] random_iv = new byte[16];
             SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
@@ -446,13 +443,13 @@ public class EgaCipher {
             Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding"); // load a cipher AES / Segmented Integer Counter
             cipher.init(Cipher.ENCRYPT_MODE, secret, paramSpec);
             OutputStream out = new CipherOutputStream(fos, cipher);
-        
+
             // Perform
             long bytes = ByteStreams.copy(fis, out);
-            System.out.println("Copied " + bytes);        
+            System.out.println("Copied " + bytes);
             out.close();
             fis.close();
-        
+
             // Test.............................................................
             // 2. Decrypt in Stages
             EgaSeekableCipherStream sct = null; // Decrypted File
@@ -461,13 +458,13 @@ public class EgaCipher {
 
             // Length
             System.out.println(file + " length: " + sft.length());
-            System.out.println((file+".cip") + " length: " + sct.length());
-        
+            System.out.println((file + ".cip") + " length: " + sct.length());
+
             // Seek
             boolean success = true;
             byte[] test = new byte[1], cipher_test = new byte[1];
             long delta = sft.length() / 1000, pos = 0;
-            for (int i=0; i<1000; i++) {
+            for (int i = 0; i < 1000; i++) {
                 sft.seek(pos);
                 sft.read(test);
                 sct.seek(pos);
@@ -479,19 +476,19 @@ public class EgaCipher {
                 }
             }
             pos += delta;
-        
+
             // Sequential Read
             sft.seek(0);
             sct.seek(0);
-            
+
             byte[] b_sft = new byte[10];
             byte[] b_sct = new byte[10];
-            
+
             int b_ = 0;
             while (b_ >= 0) {
                 b_ = sft.read(b_sft);
                 b_ = sct.read(b_sct);
-                
+
                 System.out.println(sft.position());
                 System.out.println(sct.position());
 
@@ -500,8 +497,8 @@ public class EgaCipher {
                     break;
                 }
             }
-            
-            
+
+
             System.out.println();
         } catch (Throwable ex) {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
@@ -510,23 +507,23 @@ public class EgaCipher {
 
     private static String generateIndex(File inputfile, byte[] password, int pw_strength) {
         String md5 = null;
-        
+
         try {
             // Open cipher stream to encrypted file - - - - - - - - - - - - - - 
             SeekableFileStream sfs_in = new SeekableFileStream(inputfile);
-            EgaSeekableCipherStream scs = new EgaSeekableCipherStream(sfs_in, (new String(password)).toCharArray(), 512000, pw_strength );
+            EgaSeekableCipherStream scs = new EgaSeekableCipherStream(sfs_in, (new String(password)).toCharArray(), 512000, pw_strength);
 
             // Open regular BAM Indexer on top of encrypted file
-            SamReader reader = 
-                SamReaderFactory.make() 
-                  .validationStringency(ValidationStringency.LENIENT) 
-                  .samRecordFactory(DefaultSAMRecordFactory.getInstance()) 
-                  .open(SamInputResource.of(scs)); 
+            SamReader reader =
+                    SamReaderFactory.make()
+                            .validationStringency(ValidationStringency.LENIENT)
+                            .samRecordFactory(DefaultSAMRecordFactory.getInstance())
+                            .open(SamInputResource.of(scs));
             String indexpath = inputfile.getCanonicalPath();
             indexpath = indexpath.substring(0, indexpath.toLowerCase().lastIndexOf(".cip")) + ".bai";
             File output = new File(indexpath);
             BAMIndexer indexer = new BAMIndexer(output, reader.getFileHeader());
-            
+
             // Do the Index - - - - - - - - - - - - - - - - - - - - - - - - - - 
             long totalRecords = 0;
             for (SAMRecord rec : reader) {
@@ -538,89 +535,89 @@ public class EgaCipher {
 
             reader.close();
             scs.close();
-            
+
             // Get MD5 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             MessageDigest digest = null;
             digest = MessageDigest.getInstance("MD5");
-            
+
             InputStream in = new BufferedInputStream(new FileInputStream(new File(indexpath)));
             byte[] buffer = new byte[65535];
             int cnt = 0;
-            while ( (cnt = in.read(buffer)) > 0  ) {
+            while ((cnt = in.read(buffer)) > 0) {
                 digest.update(buffer, 0, cnt);
             }
             in.close();
             byte[] md5sum = digest.digest();
             md5 = "";
-            for (int i=0; i < md5sum.length; i++)
-                md5 += Integer.toString( ( md5sum[i] & 0xff ) + 0x100, 16).substring( 1 );
-            
+            for (int i = 0; i < md5sum.length; i++)
+                md5 += Integer.toString((md5sum[i] & 0xff) + 0x100, 16).substring(1);
+
             FileWriter fw = new FileWriter(indexpath.concat(".md5"));
             fw.write(md5);
             fw.flush();
             fw.close();
-            
+
         } catch (NoSuchAlgorithmException | IOException ex) {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         return md5;
     }
-    
+
     private static void test(String[] args, int pw_strength) {
         char[] pw = args[0].toCharArray();
         File encrypted = new File(args[1]);
         File plain = new File(args[2]);
-        
+
         try {
-            SeekableStream ss_plain = new SeekableFileStream(plain);            
+            SeekableStream ss_plain = new SeekableFileStream(plain);
             SeekableFileStream sfs_in = new SeekableFileStream(encrypted);
-            EgaSeekableCipherStream scs = new EgaSeekableCipherStream(sfs_in, pw, 512000, pw_strength );
+            EgaSeekableCipherStream scs = new EgaSeekableCipherStream(sfs_in, pw, 512000, pw_strength);
 
             byte[] a = new byte[1024], b = new byte[1024];
             int read = 0;
             long pos = 0;
-            
-            while( (read = ss_plain.read(a)) > 0 ) {
+
+            while ((read = ss_plain.read(a)) > 0) {
                 if (scs.read(b) != read) {
-                    System.out.println("file end error");        
+                    System.out.println("file end error");
                     System.exit(1);
                 }
                 if (!Arrays.equals(a, b)) {
                     System.out.println("byte content error -- " + pos);
-                    
-                    for (int i=0; i<read; i++) {
-                        System.out.println((pos+i) + ": " + (int)a[i] + " - " + (int)b[i]);
+
+                    for (int i = 0; i < read; i++) {
+                        System.out.println((pos + i) + ": " + (int) a[i] + " - " + (int) b[i]);
                     }
                     System.exit(1);
                 }
                 pos += read;
             }
-            
+
             ss_plain.close();
             scs.close();
-            
+
             System.out.println("Success!");
         } catch (IOException ex) {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        
+
+
     }
-    
+
     private static void plain(String[] args) {
         File plain = new File(args[0]);
         try {
-            SeekableStream ss_plain = new SeekableFileStream(plain);            
+            SeekableStream ss_plain = new SeekableFileStream(plain);
             SamInputResource sir = SamInputResource.of(ss_plain);
-            
+
             SamReader reader = SamReaderFactory.make().enable(Option.CACHE_FILE_BASED_INDEXES).open(sir);
             //SAMFileReader reader = new SAMFileReader(ss_plain);
             File output = new File(plain.getCanonicalPath() + ".bai");
             BAMIndexer indexer = new BAMIndexer(output, reader.getFileHeader());
 
             //reader.enableFileSource(true);
-            
+
             // Do the Index - - - - - - - - - - - - - - - - - - - - - - - - - - 
             for (SAMRecord rec : reader)
                 indexer.processAlignment(rec);
@@ -631,5 +628,5 @@ public class EgaCipher {
             Logger.getLogger(EgaCipher.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
 }
