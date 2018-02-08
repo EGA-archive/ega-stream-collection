@@ -47,11 +47,11 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
     public EgaSeekableHTTPStreamOAuth(final URL url, Proxy proxy) {
         this(url, proxy, null);
     }
-    
+
     public EgaSeekableHTTPStreamOAuth(final URL url, Proxy proxy, String auth) {
         this(url, proxy, auth, -1);
     }
-    
+
     public EgaSeekableHTTPStreamOAuth(final URL url, Proxy proxy, String auth, long fileSize) {
 
         this.proxy = proxy;
@@ -65,13 +65,12 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
         if (contentLengthString != null && contentLength == -1) {
             try {
                 contentLength = Long.parseLong(contentLengthString);
-            }
-            catch (NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
                 System.err.println("WARNING: Invalid content length (" + contentLengthString + "  for: " + url);
                 contentLength = -1;
             }
         }
-        
+
     }
 
     public long position() {
@@ -100,7 +99,7 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
     public int read(byte[] buffer, int offset, int len) throws IOException {
 
         if (offset < 0 || len < 0 || (offset + len) > buffer.length) {
-            throw new IndexOutOfBoundsException("Offset="+offset+",len="+len+",buflen="+buffer.length);
+            throw new IndexOutOfBoundsException("Offset=" + offset + ",len=" + len + ",buflen=" + buffer.length);
         }
         if (len == 0 || position == contentLength) {
             if (position >= contentLength) {
@@ -117,9 +116,9 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
             connection = proxy == null ?
                     (HttpURLConnection) url.openConnection() :
                     (HttpURLConnection) url.openConnection(proxy);
-            if (auth!=null) {
+            if (auth != null) {
                 String authHeader = "Bearer " + auth;
-                connection.setRequestProperty ("Authorization", authHeader);
+                connection.setRequestProperty("Authorization", authHeader);
             }
 
             long endRange = position + len - 1;
@@ -148,9 +147,7 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
 
             return n;
 
-        }
-
-        catch (IOException e) {
+        } catch (IOException e) {
             // THis is a bit of a hack, but its not clear how else to handle this.  If a byte range is specified
             // that goes past the end of the file the response code will be 416.  The MAC os translates this to
             // an IOException with the 416 code in the message.  Windows translates the error to an EOFException.
@@ -169,9 +166,7 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
                 throw e;
             }
 
-        }
-
-        finally {
+        } finally {
             if (is != null) {
                 is.close();
             }
@@ -188,9 +183,9 @@ public class EgaSeekableHTTPStreamOAuth extends SeekableStream {
 
 
     public int read() throws IOException {
-    	byte []tmp=new byte[1];
-    	read(tmp,0,1);
-    	return (int) tmp[0] & 0xFF; 
+        byte[] tmp = new byte[1];
+        read(tmp, 0, 1);
+        return (int) tmp[0] & 0xFF;
     }
 
     @Override

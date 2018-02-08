@@ -16,6 +16,13 @@
 
 package eu.elixir.ega.ebi.egacipher;
 
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator;
+import org.bouncycastle.openpgp.operator.PBEDataDecryptorFactory;
+import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator;
+import org.bouncycastle.openpgp.operator.bc.BcPBEDataDecryptorFactory;
+import org.bouncycastle.openpgp.operator.bc.BcPGPDigestCalculatorProvider;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,27 +31,15 @@ import java.security.NoSuchProviderException;
 import java.security.Security;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.bouncycastle.openpgp.PGPCompressedData;
-import org.bouncycastle.openpgp.PGPEncryptedDataList;
-import org.bouncycastle.openpgp.PGPException;
-import org.bouncycastle.openpgp.PGPLiteralData;
-import org.bouncycastle.openpgp.PGPObjectFactory;
-import org.bouncycastle.openpgp.PGPPBEEncryptedData;
-import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator;
-import org.bouncycastle.openpgp.operator.PBEDataDecryptorFactory;
-import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator;
-import org.bouncycastle.openpgp.operator.bc.BcPBEDataDecryptorFactory;
-import org.bouncycastle.openpgp.operator.bc.BcPGPDigestCalculatorProvider;
 
 /**
- *
  * @author asenf
  */
 public class EgaGpgStream extends Thread {
     private static KeyFingerPrintCalculator fingerPrintCalculater = new BcKeyFingerprintCalculator();
-    private static  BcPGPDigestCalculatorProvider calc = new BcPGPDigestCalculatorProvider();
-    
-    public EgaGpgStream(InputStream in, OutputStream out, int blocksize, char[] password, boolean mod, int pw_strength) {    
+    private static BcPGPDigestCalculatorProvider calc = new BcPGPDigestCalculatorProvider();
+
+    public EgaGpgStream(InputStream in, OutputStream out, int blocksize, char[] password, boolean mod, int pw_strength) {
         InputStream in_ = null;
         {
             InputStream clear = null;
@@ -55,27 +50,27 @@ public class EgaGpgStream extends Thread {
                 PGPEncryptedDataList enc;
                 Object o = pgpF.nextObject();
                 if (o instanceof PGPEncryptedDataList) {
-                        enc = (PGPEncryptedDataList) o;
+                    enc = (PGPEncryptedDataList) o;
                 } else {
-                        enc = (PGPEncryptedDataList) pgpF.nextObject();
+                    enc = (PGPEncryptedDataList) pgpF.nextObject();
                 }
-                PGPPBEEncryptedData pbe = (PGPPBEEncryptedData)enc.get(0);
-                
+                PGPPBEEncryptedData pbe = (PGPPBEEncryptedData) enc.get(0);
+
                 // **************
-                PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory( password , calc);
-                clear = pbe.getDataStream(pbedff);                
+                PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory(password, calc);
+                clear = pbe.getDataStream(pbedff);
                 // **************
                 PGPObjectFactory pgpFact = new PGPObjectFactory(clear, fingerPrintCalculater);
-                PGPCompressedData cData = (PGPCompressedData)pgpFact.nextObject();
+                PGPCompressedData cData = (PGPCompressedData) pgpFact.nextObject();
                 pgpFact = new PGPObjectFactory(cData.getDataStream(), fingerPrintCalculater);
-                PGPLiteralData ld = (PGPLiteralData)pgpFact.nextObject();
+                PGPLiteralData ld = (PGPLiteralData) pgpFact.nextObject();
                 InputStream in__ = ld.getInputStream();
             } catch (PGPException ex) {
                 Logger.getLogger(EgaGpgStream.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
-               Logger.getLogger(EgaGpgStream.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(EgaGpgStream.class.getName()).log(Level.SEVERE, null, ex);
             } catch (Throwable t) {
-                
+
             } finally {
                 try {
                     in_.close();
@@ -89,9 +84,9 @@ public class EgaGpgStream extends Thread {
                 }
             }
         }
-        
+
     }
-    
+
     public static InputStream getDecodingGPGInoutStream(FileInputStream fis, char[] pw) throws IOException, PGPException, NoSuchProviderException {
         InputStream in = org.bouncycastle.openpgp.PGPUtil.getDecoderStream(fis);
 
@@ -100,23 +95,24 @@ public class EgaGpgStream extends Thread {
 
         Object o = pgpF.nextObject();
         if (o instanceof PGPEncryptedDataList) {
-                enc = (PGPEncryptedDataList) o;
+            enc = (PGPEncryptedDataList) o;
         } else {
-                enc = (PGPEncryptedDataList) pgpF.nextObject();
+            enc = (PGPEncryptedDataList) pgpF.nextObject();
         }
 
-        PGPPBEEncryptedData pbe = (PGPPBEEncryptedData)enc.get(0);
+        PGPPBEEncryptedData pbe = (PGPPBEEncryptedData) enc.get(0);
         // **************
-        PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory( pw , calc);
-        InputStream clear = pbe.getDataStream(pbedff);                
+        PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory(pw, calc);
+        InputStream clear = pbe.getDataStream(pbedff);
         // **************
         PGPObjectFactory pgpFact = new PGPObjectFactory(clear, fingerPrintCalculater);
-        PGPCompressedData cData = (PGPCompressedData)pgpFact.nextObject();
+        PGPCompressedData cData = (PGPCompressedData) pgpFact.nextObject();
         pgpFact = new PGPObjectFactory(cData.getDataStream(), fingerPrintCalculater);
-        PGPLiteralData ld = (PGPLiteralData)pgpFact.nextObject();
-        
+        PGPLiteralData ld = (PGPLiteralData) pgpFact.nextObject();
+
         return ld.getInputStream();
     }
+
     public static InputStream getDecodingGPGInoutStream(InputStream fis, char[] pw) throws IOException, PGPException, NoSuchProviderException {
         InputStream in = org.bouncycastle.openpgp.PGPUtil.getDecoderStream(fis);
 
@@ -125,30 +121,30 @@ public class EgaGpgStream extends Thread {
 
         Object o = pgpF.nextObject();
         if (o instanceof PGPEncryptedDataList) {
-                enc = (PGPEncryptedDataList) o;
+            enc = (PGPEncryptedDataList) o;
         } else {
-                enc = (PGPEncryptedDataList) pgpF.nextObject();
+            enc = (PGPEncryptedDataList) pgpF.nextObject();
         }
 
-        PGPPBEEncryptedData pbe = (PGPPBEEncryptedData)enc.get(0);
+        PGPPBEEncryptedData pbe = (PGPPBEEncryptedData) enc.get(0);
         // **************
-        PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory( pw , calc);
-        InputStream clear = pbe.getDataStream(pbedff);                
+        PBEDataDecryptorFactory pbedff = new BcPBEDataDecryptorFactory(pw, calc);
+        InputStream clear = pbe.getDataStream(pbedff);
         // **************
         PGPObjectFactory pgpFact = new PGPObjectFactory(clear, fingerPrintCalculater);
-        PGPCompressedData cData = (PGPCompressedData)pgpFact.nextObject();
+        PGPCompressedData cData = (PGPCompressedData) pgpFact.nextObject();
         pgpFact = new PGPObjectFactory(cData.getDataStream(), fingerPrintCalculater);
-        PGPLiteralData ld = (PGPLiteralData)pgpFact.nextObject();
-        
+        PGPLiteralData ld = (PGPLiteralData) pgpFact.nextObject();
+
         return ld.getInputStream();
     }
 
     public static void setupGPG() {
         Security.insertProviderAt(new org.bouncycastle.jce.provider.BouncyCastleProvider(), 1);
     }
-    
+
     public static void getEncodingGPGStream() {
         // TODO - maybe: GPG stream for encoding with public key
     }
-    
+
 }

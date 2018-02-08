@@ -25,11 +25,13 @@
 
 package eu.elixir.ega.ebi.egacipher;
 
-import java.io.*;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NullCipher;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * A CipherInputStream is composed of an InputStream and a Cipher so
@@ -37,11 +39,11 @@ import javax.crypto.NullCipher;
  * underlying InputStream but have been additionally processed by the
  * Cipher.  The Cipher must be fully initialized before being used by
  * a CipherInputStream.
- *
+ * <p>
  * <p> For example, if the Cipher is initialized for decryption, the
  * CipherInputStream will attempt to read in data and decrypt them,
  * before returning the decrypted data.
- *
+ * <p>
  * <p> This class adheres strictly to the semantics, especially the
  * failure semantics, of its ancestor classes
  * java.io.FilterInputStream and java.io.InputStream.  This class has
@@ -50,7 +52,7 @@ import javax.crypto.NullCipher;
  * that are not thrown by its ancestor classes.  In particular, the
  * <code>skip method skips, and the available
  * method counts only data that have been processed by the encapsulated Cipher.
- *
+ * <p>
  * <p> It is crucial for a programmer using this class not to use
  * methods that are not defined or overriden in this class (such as a
  * new method or constructor that is later added to one of the super
@@ -58,12 +60,11 @@ import javax.crypto.NullCipher;
  * are unlikely to have considered security impact with regard to
  * CipherInputStream.
  *
- * @author  Li Gong
- * @see     java.io.InputStream
- * @see     java.io.FilterInputStream
- * @see     javax.crypto.Cipher
- * @see     javax.crypto.CipherOutputStream
- *
+ * @author Li Gong
+ * @see java.io.InputStream
+ * @see java.io.FilterInputStream
+ * @see javax.crypto.Cipher
+ * @see javax.crypto.CipherOutputStream
  * @since 1.4
  */
 
@@ -95,11 +96,11 @@ public class EgaCipherInputStream extends FilterInputStream {
 
     /**
      * private convenience function.
-     *
+     * <p>
      * Entry condition: ostart = ofinish
-     *
+     * <p>
      * Exit condition: ostart <= ofinish
-     *
+     * <p>
      * return (ofinish-ostart) (we have this many bytes for you)
      * return 0 (no data now, but could have more later)
      * return -1 (absolutely no more data)
@@ -111,9 +112,11 @@ public class EgaCipherInputStream extends FilterInputStream {
             done = true;
             try {
                 obuffer = cipher.doFinal();
+            } catch (IllegalBlockSizeException e) {
+                obuffer = null;
+            } catch (BadPaddingException e) {
+                obuffer = null;
             }
-            catch (IllegalBlockSizeException e) {obuffer = null;}
-            catch (BadPaddingException e) {obuffer = null;}
             if (obuffer == null)
                 return -1;
             else {
@@ -124,7 +127,10 @@ public class EgaCipherInputStream extends FilterInputStream {
         }
         try {
             obuffer = cipher.update(ibuffer, 0, readin);
-        } catch (IllegalStateException e) {obuffer = null;};
+        } catch (IllegalStateException e) {
+            obuffer = null;
+        }
+        ;
         ostart = 0;
         if (obuffer == null)
             ofinish = 0;
@@ -138,15 +144,16 @@ public class EgaCipherInputStream extends FilterInputStream {
         cipher = c;
         this.ibuffer = new byte[bufferSize];
     }
-    
+
     /**
      * Constructs a CipherInputStream from an InputStream and a
      * Cipher.
      * <br>Note: if the specified input stream or cipher is
      * null, a NullPointerException may be thrown later when
      * they are used.
+     *
      * @param is the to-be-processed input stream
-     * @param c an initialized Cipher object
+     * @param c  an initialized Cipher object
      */
     public EgaCipherInputStream(InputStream is, Cipher c) {
         super(is);
@@ -160,6 +167,7 @@ public class EgaCipherInputStream extends FilterInputStream {
      * CipherInputStream using a NullCipher.
      * <br>Note: if the specified input stream is null, a
      * NullPointerException may be thrown later when it is used.
+     *
      * @param is the to-be-processed input stream
      */
     protected EgaCipherInputStream(InputStream is) {
@@ -178,9 +186,9 @@ public class EgaCipherInputStream extends FilterInputStream {
      * is thrown.
      * <p>
      *
-     * @return  the next byte of data, or <code>-1 if the end of the
-     *          stream is reached.
-     * @exception  IOException  if an I/O error occurs.
+     * @return the next byte of data, or <code>-1 if the end of the
+     * stream is reached.
+     * @throws IOException if an I/O error occurs.
      * @since JCE1.2
      */
     public int read() throws IOException {
@@ -191,7 +199,9 @@ public class EgaCipherInputStream extends FilterInputStream {
             if (i == -1) return -1;
         }
         return ((int) obuffer[ostart++] & 0xff);
-    };
+    }
+
+    ;
 
     /**
      * Reads up to <code>b.length bytes of data from this input
@@ -201,13 +211,13 @@ public class EgaCipherInputStream extends FilterInputStream {
      * the <code>read method of three arguments with the arguments
      * <code>b, 0, and b.length.
      *
-     * @param      b   the buffer into which the data is read.
-     * @return     the total number of bytes read into the buffer, or
-     *             <code>-1 is there is no more data because the end of
-     *             the stream has been reached.
-     * @exception  IOException  if an I/O error occurs.
-     * @see        java.io.InputStream#read(byte[], int, int)
-     * @since      JCE1.2
+     * @param b the buffer into which the data is read.
+     * @return the total number of bytes read into the buffer, or
+     * <code>-1 is there is no more data because the end of
+     * the stream has been reached.
+     * @throws IOException if an I/O error occurs.
+     * @see java.io.InputStream#read(byte[], int, int)
+     * @since JCE1.2
      */
     public int read(byte b[]) throws IOException {
         return read(b, 0, b.length);
@@ -219,16 +229,16 @@ public class EgaCipherInputStream extends FilterInputStream {
      * available. If the first argument is <code>null, up to
      * <code>len bytes are read and discarded.
      *
-     * @param      b     the buffer into which the data is read.
-     * @param      off   the start offset in the destination array
-     *                   <code>buf
-     * @param      len   the maximum number of bytes read.
-     * @return     the total number of bytes read into the buffer, or
-     *             <code>-1 if there is no more data because the end of
-     *             the stream has been reached.
-     * @exception  IOException  if an I/O error occurs.
-     * @see        java.io.InputStream#read()
-     * @since      JCE1.2
+     * @param b   the buffer into which the data is read.
+     * @param off the start offset in the destination array
+     *            <code>buf
+     * @param len the maximum number of bytes read.
+     * @return the total number of bytes read into the buffer, or
+     * <code>-1 if there is no more data because the end of
+     * the stream has been reached.
+     * @throws IOException if an I/O error occurs.
+     * @see java.io.InputStream#read()
+     * @since JCE1.2
      */
     public int read(byte b[], int off, int len) throws IOException {
         if (ostart >= ofinish) {
@@ -252,19 +262,19 @@ public class EgaCipherInputStream extends FilterInputStream {
     /**
      * Skips <code>n bytes of input from the bytes that can be read
      * from this input stream without blocking.
-     *
+     * <p>
      * <p>Fewer bytes than requested might be skipped.
      * The actual number of bytes skipped is equal to <code>n or
      * the result of a call to
      * {@link #available() available},
      * whichever is smaller.
      * If <code>n is less than zero, no bytes are skipped.
-     *
+     * <p>
      * <p>The actual number of bytes skipped is returned.
      *
-     * @param      n the number of bytes to be skipped.
-     * @return     the actual number of bytes skipped.
-     * @exception  IOException  if an I/O error occurs.
+     * @param n the number of bytes to be skipped.
+     * @return the actual number of bytes skipped.
+     * @throws IOException if an I/O error occurs.
      * @since JCE1.2
      */
     public long skip(long n) throws IOException {
@@ -285,10 +295,10 @@ public class EgaCipherInputStream extends FilterInputStream {
      * <code>InputStream returns 0. This method
      * <B>should be overridden by subclasses.
      *
-     * @return     the number of bytes that can be read from this input stream
-     *             without blocking.
-     * @exception  IOException  if an I/O error occurs.
-     * @since      JCE1.2
+     * @return the number of bytes that can be read from this input stream
+     * without blocking.
+     * @throws IOException if an I/O error occurs.
+     * @since JCE1.2
      */
     public int available() throws IOException {
         return (ofinish - ostart);
@@ -302,7 +312,7 @@ public class EgaCipherInputStream extends FilterInputStream {
      * calls the <code>close method of its underlying input
      * stream.
      *
-     * @exception  IOException  if an I/O error occurs.
+     * @throws IOException if an I/O error occurs.
      * @since JCE1.2
      */
     public void close() throws IOException {
@@ -317,8 +327,7 @@ public class EgaCipherInputStream extends FilterInputStream {
             if (!done) {
                 cipher.doFinal();
             }
-        }
-        catch (BadPaddingException | IllegalBlockSizeException ex) {
+        } catch (BadPaddingException | IllegalBlockSizeException ex) {
         }
         ostart = 0;
         ofinish = 0;
@@ -328,11 +337,11 @@ public class EgaCipherInputStream extends FilterInputStream {
      * Tests if this input stream supports the <code>mark
      * and <code>reset methods, which it does not.
      *
-     * @return  <code>false, since this class does not support the
-     *          <code>mark and reset methods.
-     * @see     java.io.InputStream#mark(int)
-     * @see     java.io.InputStream#reset()
-     * @since   JCE1.2
+     * @return <code>false, since this class does not support the
+     * <code>mark and reset methods.
+     * @see java.io.InputStream#mark(int)
+     * @see java.io.InputStream#reset()
+     * @since JCE1.2
      */
     public boolean markSupported() {
         return false;

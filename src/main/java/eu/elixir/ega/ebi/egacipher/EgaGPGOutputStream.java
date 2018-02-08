@@ -15,46 +15,40 @@
  */
 package eu.elixir.ega.ebi.egacipher;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.PublicKeyKeyEncryptionMethodGenerator;
+import org.bouncycastle.openpgp.operator.bc.BcPGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.bc.BcPublicKeyKeyEncryptionMethodGenerator;
+
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Date;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
-import org.bouncycastle.openpgp.PGPEncryptedData;
-import org.bouncycastle.openpgp.PGPEncryptedDataGenerator;
-import org.bouncycastle.openpgp.PGPException;
-import org.bouncycastle.openpgp.PGPLiteralData;
-import org.bouncycastle.openpgp.PGPLiteralDataGenerator;
-import org.bouncycastle.openpgp.PGPPublicKey;
-import org.bouncycastle.openpgp.operator.PublicKeyKeyEncryptionMethodGenerator;
-import org.bouncycastle.openpgp.operator.bc.BcPGPDataEncryptorBuilder;
-import org.bouncycastle.openpgp.operator.bc.BcPublicKeyKeyEncryptionMethodGenerator;
 
 /**
- *
  * @author asenf
  */
 public class EgaGPGOutputStream extends OutputStream {
     private final OutputStream out;
     private final PGPPublicKey pgKey;
-    
+
     private final String dest = "/stream"; // Dummy Filename for GPG Instatiation
-    
+
     private OutputStream literalOut = null, encOut = null, compressedOut = null; // PGP
     private int DEFAULT_BUFFER_SIZE = 65 * 1024;                                 // PGP
     private PGPEncryptedDataGenerator encryptedDataGenerator = null;             // PGP
     private PGPCompressedDataGenerator compressedDataGenerator = null;           // PGP
     private PGPLiteralDataGenerator literalDataGenerator = null;                 // PGP
-    
+
     public EgaGPGOutputStream(OutputStream out, PGPPublicKey gpgKey) throws IOException {
         this.out = out;
         this.pgKey = gpgKey;
-        
+
         // Set up the GPG Cipher
-        Security.addProvider(new BouncyCastleProvider());        
+        Security.addProvider(new BouncyCastleProvider());
 
         // Encrypted Data Generator -- needs unlimited Security Policy or use OpenJDK
         BcPGPDataEncryptorBuilder pgpdeb = new BcPGPDataEncryptorBuilder(PGPEncryptedData.CAST5);
@@ -63,7 +57,7 @@ public class EgaGPGOutputStream extends OutputStream {
         encryptedDataGenerator = new PGPEncryptedDataGenerator(pgpdeb);
 
         try {
-            PublicKeyKeyEncryptionMethodGenerator pgppkem= new BcPublicKeyKeyEncryptionMethodGenerator(pgKey);
+            PublicKeyKeyEncryptionMethodGenerator pgppkem = new BcPublicKeyKeyEncryptionMethodGenerator(pgKey);
             encryptedDataGenerator.addMethod(pgppkem);
             encOut = encryptedDataGenerator.open(out, new byte[DEFAULT_BUFFER_SIZE]);
         } catch (PGPException ex) {
@@ -76,10 +70,10 @@ public class EgaGPGOutputStream extends OutputStream {
 
         // Literal Data Generator and Output Stream
         literalDataGenerator = new PGPLiteralDataGenerator();
-        String fileName = this.dest.substring(this.dest.lastIndexOf("/")+1);
+        String fileName = this.dest.substring(this.dest.lastIndexOf("/") + 1);
         literalOut = literalDataGenerator.open(compressedOut,
-                                PGPLiteralData.BINARY, fileName,
-                                new Date(),new byte[DEFAULT_BUFFER_SIZE]); // 1<<16
+                PGPLiteralData.BINARY, fileName,
+                new Date(), new byte[DEFAULT_BUFFER_SIZE]); // 1<<16
     }
 
     @Override

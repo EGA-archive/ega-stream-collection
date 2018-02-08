@@ -16,11 +16,11 @@
 package eu.elixir.ega.ebi.egacipher;
 
 import htsjdk.samtools.seekablestream.SeekableStream;
+
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
- *
  * @author asenf
  */
 public class EgaFakeSeekableStream extends SeekableStream {
@@ -28,17 +28,18 @@ public class EgaFakeSeekableStream extends SeekableStream {
     private final InputStream in;
     private long position;
     private long contentLength = -1;
-    
+
     public EgaFakeSeekableStream(InputStream in) {
         this.in = in;
         this.position = 0;
     }
+
     public EgaFakeSeekableStream(InputStream in, long contentLength) {
         this.in = in;
         this.position = 0;
         this.contentLength = contentLength;
-    }    
-    
+    }
+
     @Override
     public long length() {
         return contentLength;
@@ -88,5 +89,5 @@ public class EgaFakeSeekableStream extends SeekableStream {
         this.position += 1;
         return in.read();
     }
-    
+
 }

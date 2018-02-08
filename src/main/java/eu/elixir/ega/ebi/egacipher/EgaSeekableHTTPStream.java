@@ -47,11 +47,11 @@ public class EgaSeekableHTTPStream extends SeekableStream {
     public EgaSeekableHTTPStream(final URL url, Proxy proxy) {
         this(url, proxy, null);
     }
-    
+
     public EgaSeekableHTTPStream(final URL url, Proxy proxy, String auth) {
         this(url, proxy, auth, -1);
     }
-    
+
     public EgaSeekableHTTPStream(final URL url, Proxy proxy, String auth, long fileSize) {
 
         this.proxy = proxy;
@@ -60,18 +60,17 @@ public class EgaSeekableHTTPStream extends SeekableStream {
         this.contentLength = fileSize;
 
         // Get Auth from URL, if applicable
-        if (auth==null||auth.length()==0) {
+        if (auth == null || auth.length() == 0) {
             this.auth = url.getUserInfo();
         }
-        
+
         // Try to get the file length
         // Note: This also sets setDefaultUseCaches(false), which is important
         final String contentLengthString = HttpUtils.getHeaderField(url, "Content-Length");
         if (contentLengthString != null && contentLength == -1) {
             try {
                 contentLength = Long.parseLong(contentLengthString);
-            }
-            catch (NumberFormatException ignored) {
+            } catch (NumberFormatException ignored) {
                 System.err.println("WARNING: Invalid content length (" + contentLengthString + "  for: " + url);
                 contentLength = -1;
             }
@@ -105,7 +104,7 @@ public class EgaSeekableHTTPStream extends SeekableStream {
 //System.out.println(" %%% EgaSeekableHTTPStream Read() buffer[]=" + buffer.length + " offset=" + offset + " len=" + len);
 
         if (offset < 0 || len < 0 || (offset + len) > buffer.length) {
-            throw new IndexOutOfBoundsException("Offset="+offset+",len="+len+",buflen="+buffer.length);
+            throw new IndexOutOfBoundsException("Offset=" + offset + ",len=" + len + ",buflen=" + buffer.length);
         }
         if (len == 0 || position == contentLength) {
             if (position >= contentLength) {
@@ -122,12 +121,12 @@ public class EgaSeekableHTTPStream extends SeekableStream {
             connection = proxy == null ?
                     (HttpURLConnection) url.openConnection() :
                     (HttpURLConnection) url.openConnection(proxy);
-            if (auth!=null&&auth.length()>0) {
+            if (auth != null && auth.length() > 0) {
                 // Java bug : http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6459815
-                String encoding = new sun.misc.BASE64Encoder().encode (auth.getBytes());
-                encoding = encoding.replaceAll("\n", "");  
+                String encoding = new sun.misc.BASE64Encoder().encode(auth.getBytes());
+                encoding = encoding.replaceAll("\n", "");
                 String basicAuth = "Basic " + encoding;
-                connection.setRequestProperty ("Authorization", basicAuth);
+                connection.setRequestProperty("Authorization", basicAuth);
             }
 
             long endRange = position + len - 1;
@@ -157,9 +156,7 @@ public class EgaSeekableHTTPStream extends SeekableStream {
 
 //System.out.println(" %%% EgaSeekableHTTPStream return: " + n);
             return n;
-        }
-
-        catch (IOException e) {
+        } catch (IOException e) {
             // THis is a bit of a hack, but its not clear how else to handle this.  If a byte range is specified
             // that goes past the end of the file the response code will be 416.  The MAC os translates this to
             // an IOException with the 416 code in the message.  Windows translates the error to an EOFException.
@@ -178,9 +175,7 @@ public class EgaSeekableHTTPStream extends SeekableStream {
                 throw e;
             }
 
-        }
-
-        finally {
+        } finally {
             if (is != null) {
                 is.close();
             }
@@ -197,9 +192,9 @@ public class EgaSeekableHTTPStream extends SeekableStream {
 
 
     public int read() throws IOException {
-    	byte []tmp=new byte[1];
-    	read(tmp,0,1);
-    	return (int) tmp[0] & 0xFF; 
+        byte[] tmp = new byte[1];
+        read(tmp, 0, 1);
+        return (int) tmp[0] & 0xFF;
     }
 
     @Override
